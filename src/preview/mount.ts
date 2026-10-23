@@ -368,6 +368,26 @@ function applyStageConfig(): void {
     stage.setVolumes(bgmVolume, seVolume)
   } catch (error) {
     console.warn('[stage] 配置下发失败', error)
+    return
+  }
+  renderStageOnce()
+}
+
+/**
+ * 暂停 / 就绪时画面是静止的，改配置（背景亮度、Guide 浓度、长条透明度、上隐、
+ * 皮肤…）不会自己重画，得补一帧才能立刻看到效果。
+ *
+ * 播放中、加载中、录制中都有各自的每帧渲染循环，这里直接跳过，避免重复渲染。
+ */
+function renderStageOnce(): void {
+  if (!stage || mode !== 'wasm' || wasmBusy || wasmBroken) return
+  if (recorder.state === 'recording') return
+  const snap = stage.snapshot()
+  if (snap.transportState === 'playing' || snap.transportState === 'loading') return
+  try {
+    stage.render()
+  } catch (error) {
+    console.warn('[stage] 单帧重绘失败', error)
   }
 }
 
@@ -473,7 +493,7 @@ function startWasmLoop(): void {
     const snap = stage.snapshot()
     // 暂停 / 就绪时画面是静止的：不再每帧重画（165 Hz 屏上一秒会白烧 165 次
     // wasm 渲染 + 合批）。只有播放、录制、或传输状态刚变过的那一帧需要重画；
-    // seek、改配置、换皮肤这些操作都已经自己调 stage.render()。
+    // seek 自己调 stage.render()，改配置走 applyStageConfig() → renderStageOnce()。
     const animating = snap.transportState === 'playing' || snap.transportState === 'loading'
     const stateChanged = snap.transportState !== lastTransport
     lastTransport = snap.transportState

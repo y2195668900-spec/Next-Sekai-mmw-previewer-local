@@ -12358,6 +12358,19 @@ function applyStageConfig() {
     stage.setVolumes(bgmVolume, seVolume);
   } catch (error) {
     console.warn("[stage] \u914D\u7F6E\u4E0B\u53D1\u5931\u8D25", error);
+    return;
+  }
+  renderStageOnce();
+}
+function renderStageOnce() {
+  if (!stage || mode !== "wasm" || wasmBusy || wasmBroken) return;
+  if (recorder.state === "recording") return;
+  const snap = stage.snapshot();
+  if (snap.transportState === "playing" || snap.transportState === "loading") return;
+  try {
+    stage.render();
+  } catch (error) {
+    console.warn("[stage] \u5355\u5E27\u91CD\u7ED8\u5931\u8D25", error);
   }
 }
 async function ensureStage() {
