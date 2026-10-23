@@ -1,0 +1,179 @@
+// @ts-nocheck
+import { Fraction } from './fraction'
+import {
+    Directional,
+    Event,
+    Meta,
+    Score,
+    Slide,
+    Tap,
+} from './model'
+
+export type RebaseEventInput = {
+    bar?: number | string
+    bpm?: number | string
+    barLength?: number | string
+    sentenceLength?: number
+    seVolume?: number
+    section?: string
+    text?: string
+}
+
+export type RebaseInput = {
+    offset?: number
+    events?: RebaseEventInput[]
+    meta?: Partial<Meta>
+}
+
+export type LoadedRebase = {
+    offset: number
+    events: Event[]
+    meta: Meta
+}
+
+const rebaseMetaKeys = [
+    'title',
+    'subtitle',
+    'artist',
+    'genre',
+    'designer',
+    'difficulty',
+    'playlevel',
+    'songid',
+    'wave',
+    'waveoffset',
+    'jacket',
+    'background',
+    'movie',
+    'movieoffset',
+    'basebpm',
+] as const
+
+export const createRebaseInputFromScore = (score: Score): RebaseInput => {
+    const meta: Record<string, string | number> = {}
+    for (const key of rebaseMetaKeys) {
+        const value = score.meta[key]
+        if (value !== null && value !== undefined && value !== '') {
+            meta[key] = value
+        }
+    }
+
+    const events = score.events.flatMap((event): RebaseEventInput[] => {
+        const serialized: RebaseEventInput = { bar: event.bar.toNumber() }
+        if (event.bpm !== null) serialized.bpm = event.bpm.toNumber()
+        if (event.barLength !== null) serialized.barLength = event.barLength.toNumber()
+        if (event.sentenceLength !== null) serialized.sentenceLength = event.sentenceLength
+        if (event.seVolume !== null) serialized.seVolume = event.seVolume
+        if (event.section !== null && event.section !== '') serialized.section = event.section
+        if (event.text !== null && event.text !== '') serialized.text = event.text
+
+        // highspeed 会由 applyRebase 从原谱面按新时间轴自动迁移，不属于 rebase.json 字段。
+        return Object.keys(serialized).length > 1 ? [serialized] : []
+    })
+
+    return {
+        offset: 0,
+        events,
+        meta: meta as Partial<Meta>,
+    }
+}
+
+export const stringifyRebaseFromScore = (score: Score): string =>
+    `${JSON.stringify(createRebaseInputFromScore(score), null, 2)}\n`
+
+const loadMeta = (value: Partial<Meta> | undefined): Meta => {
+    if (!value) {
+        return new Meta()
+    }
+    return new Meta(value)
+}
+
+export const loadRebase = (value: RebaseInput | null | undefined): LoadedRebase => ({
+    offset: value?.offset ?? 0,
+    events: (value?.events ?? []).map(
+        (event) =>
+            new Event({
+                bar: event.bar ?? 0,
+                bpm: event.bpm,
+                barLength: event.barLength,
+                sentenceLength: event.sentenceLength,
+                seVolume: event.seVolume,
+                section: event.section,
+                text: event.text,
+            }),
+    ),
+    meta: loadMeta(value?.meta),
+})
+
+const rebaseBar = (source: Score, target: Score, bar: Fraction, offset: number): Fraction =>
+    target.getBarByTime(source.getTime(bar) - offset)
+
+const rebaseTap = (source: Score, target: Score, note: Tap, offset: number): Tap =>
+    note.cloneWithBar(rebaseBar(source, target, note.bar, offset))
+
+const rebaseDirectional = (
+    source: Score,
+    target: Score,
+    note: Directional,
+    offset: number,
+): Directional => note.cloneWithBar(rebaseBar(source, target, note.bar, offset))
+
+const rebaseSlide = (source: Score, target: Score, note: Slide, offset: number): Slide =>
+    note.cloneWithBar(rebaseBar(source, target, note.bar, offset))
+
+export const applyRebase = (source: Score, input: RebaseInput): Score => {
+    const rebase = loadRebase(input)
+
+    const score = new Score()
+    score.meta = source.meta.merge(rebase.meta)
+    score.events = rebase.events.map((event) => event.clone())
+
+    for (const note of source.notes) {
+        if (note instanceof Tap) {
+            score.notes.push(rebaseTap(source, score, note, rebase.offset))
+            continue
+        }
+
+        if (note instanceof Directional) {
+            score.notes.push(rebaseDirectional(source, score, note, rebase.offset))
+            if (note.tap) {
+                score.notes.push(rebaseTap(source, score, note.tap, rebase.offset))
+            }
+            continue
+        }
+
+        if (note instanceof Slide) {
+            score.notes.push(rebaseSlide(source, score, note, rebase.offset))
+            if (note.tap) {
+                score.notes.push(rebaseTap(source, score, note.tap, rebase.offset))
+            }
+            if (note.directional) {
+                score.notes.push(rebaseDirectional(source, score, note.directional, rebase.offset))
+                if (note.directional.tap && note.directional.tap !== note.tap) {
+                    score.notes.push(rebaseTap(source, score, note.directional.tap, rebase.offset))
+                }
+            }
+        }
+    }
+
+    score.events = score.events.concat(
+        source.events
+            .filter((event) => Boolean(event.speed || event.seVolume !== null || event.text))
+            .map(
+                (event) =>
+                    new Event({
+                        bar: rebaseBar(source, score, event.bar, rebase.offset),
+                        speed: event.speed,
+                        seVolume: event.seVolume,
+                        section: event.section,
+                        text: event.text,
+                    }),
+            ),
+    )
+
+    score.notes.sort((a, b) => a.bar.compare(b.bar))
+    score.initNotes()
+    score.initEvents()
+
+    return score
+}

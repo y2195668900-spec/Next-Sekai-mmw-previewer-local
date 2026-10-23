@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+*.wasm binary
+*.exe binary
+*.dll binary
+*.png binary
+*.jpg binary
+*.mp3 binary
+*.m4a binary
+*.otf binary
+*.ttf binary
+*.zip binary

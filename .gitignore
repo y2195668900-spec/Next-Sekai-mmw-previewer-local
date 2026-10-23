@@ -1,0 +1,12 @@
+# 依赖与构建中间物
+node_modules/
+launcher/bin/
+launcher/obj/
+launcher/dist/
+launcher/dist-portable/
+launcher/dist-trim/
+release/
+
+# 临时文件
+.t-*/
+*.log

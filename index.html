@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sonolus Version · Next SEKAI 预览器</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #070a11;
+        --panel: rgba(8, 15, 24, 0.82);
+        --line: rgba(178, 208, 233, 0.14);
+        --text: #e8f1f8;
+        --muted: rgba(200, 216, 230, 0.62);
+        --accent: #8ec3f6;
+        --accent-2: #5d90cf;
+        --ok: #4ade80;
+        --bad: #f87171;
+        --radius: 22px;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 700px at 20% -10%, #10203a 0%, var(--bg) 55%);
+        color: var(--text);
+        font: 13px/1.55 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+        overflow: hidden;
+      }
+      button, select, input { font: inherit; color: inherit; }
+
+      /* ── 预览页：顶栏 + 可滚动主区（画布 + 控制栏，布局对齐旧版） ── */
+      .pv-page { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+      .pv-topbar {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 16px; border-bottom: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(17,24,39,.95), rgba(11,17,32,.85));
+        backdrop-filter: blur(10px);
+      }
+      .pv-brand { display: flex; align-items: baseline; gap: 8px; }
+      .pv-brand strong { font-size: 15px; }
+      .pv-brand span { color: var(--muted); font-size: 12px; }
+      .pv-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+      .pv-dot.live { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+      .pv-spacer { flex: 1; }
+      .pv-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 10px; border-radius: 999px;
+        border: 1px solid var(--line); background: rgba(30,41,59,.4);
+        color: var(--muted); font-size: 12px;
+      }
+      .pv-chip b { color: var(--text); font-weight: 600; }
+      .pv-link {
+        color: var(--muted); text-decoration: none; font-size: 12px;
+        padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+      }
+      .pv-link:hover { color: var(--text); border-color: var(--accent); }
+
+      .pv-scroll { overflow: auto; padding: 22px 18px 30px; }
+      .app-shell {
+        display: flex; flex-direction: column; align-items: center;
+        width: 100%; gap: 20px;
+      }
+
+      /* ── 画布面板 ── */
+      .preview-panel {
+        width: min(100%, 1400px);
+        aspect-ratio: 16 / 9;
+        position: relative; overflow: hidden; isolation: isolate;
+        border-radius: var(--radius); border: 1px solid var(--line);
+        background:
+          linear-gradient(180deg, rgba(19, 32, 47, 0.86), rgba(6, 11, 18, 0.92)),
+          linear-gradient(140deg, rgba(89, 153, 219, 0.12), transparent 60%);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+      .preview-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      #stage-wasm { display: none; }
+      .preview-panel[data-renderer="wasm"] #stage { display: none; }
+      .preview-panel[data-renderer="wasm"] #stage-wasm { display: block; }
+      .preview-panel[data-renderer="wasm"] .stage-hud { display: none; }
+      .stage-hud {
+        position: absolute; left: 14px; top: 12px; pointer-events: none;
+        display: flex; gap: 8px; flex-wrap: wrap; max-width: 60%;
+      }
+      .hud-pill {
+        padding: 3px 9px; border-radius: 999px; font-size: 11px;
+        background: rgba(2,6,23,.66); border: 1px solid rgba(94,224,192,.25); color: #b6f5e6;
+      }
+      /* 浏览器音频手势未获取时的解锁层（对齐旧版 unlock-layer） */
+      .unlock-layer {
+        position: absolute; inset: 0; z-index: 6; display: grid; place-items: center;
+        background: rgba(2, 6, 14, 0.72); backdrop-filter: blur(2px);
+      }
+      .unlock-layer[hidden] { display: none !important; }
+      .unlock-card {
+        width: min(420px, 82%); padding: 22px 24px; border-radius: 18px;
+        border: 1px solid var(--line); background: rgba(12, 22, 34, 0.95);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45); text-align: center;
+      }
+      .unlock-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+      .unlock-text { font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 16px; }
+      .unlock-button {
+        appearance: none; border: 0; border-radius: 999px; padding: 10px 26px;
+        background: linear-gradient(180deg, #8ec3f6 0%, #5d90cf 100%);
+        color: #06101a; font-weight: 700; cursor: pointer;
+      }
+      .unlock-button:hover { filter: brightness(1.06); }
+
+      .drop-hint {
+        position: absolute; inset: 12px; border: 2px dashed rgba(142,195,246,.45);
+        border-radius: var(--radius); display: none; align-items: center; justify-content: center;
+        background: rgba(2,6,23,.7); color: var(--accent); font-size: 15px;
+      }
+      .preview-panel.dragging .drop-hint { display: flex; }
+
+      /* ── 控制栏：与旧版一致的卡片式多行布局 ── */
+      .controls {
+        width: min(100%, 1400px);
+        display: grid; gap: 14px;
+        padding: 16px 18px 18px;
+        border-radius: var(--radius); border: 1px solid var(--line);
+        background: var(--panel);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+      }
+      .controls-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .controls-row > * { min-width: 0; }
+      .controls-row-main { flex-wrap: nowrap; }
+      .controls-row-main .time-readout { margin-left: auto; }
+      .controls-row-progress { display: block; }
+      .controls-row-progress .timeline { width: 100%; min-width: 0; margin: 0; }
+      .controls-row-fullscreen { justify-content: flex-end; flex-wrap: wrap; row-gap: 6px; }
+      .controls-row-recording {
+        justify-content: flex-start; flex-wrap: wrap; row-gap: 8px;
+        padding-top: 12px; border-top: 1px solid var(--line);
+      }
+      .recording-elapsed {
+        min-width: 5ch; padding: 4px 10px; border-radius: 999px;
+        background: rgba(12, 22, 34, 0.72); border: 1px solid var(--line);
+        color: rgba(233, 243, 251, 0.9); font-variant-numeric: tabular-nums;
+      }
+      .recording-status { font-size: 12px; color: var(--muted); }
+      .recording-status[data-tone="error"] { color: var(--bad); }
+      .controls label { display: flex; align-items: center; gap: 8px; min-width: 0; color: rgba(232, 241, 248, 0.84); }
+      .controls input[type='range'] { accent-color: var(--accent); }
+      .controls button, .controls select, .controls input, .controls output { max-width: 100%; }
+
+      .play-toggle {
+        appearance: none; border: 0; border-radius: 50%;
+        width: 54px; height: 54px; display: grid; place-items: center;
+        background: linear-gradient(180deg, #8ec3f6 0%, #5d90cf 100%);
+        color: #06101a; font-weight: 700; cursor: pointer; font-size: 17px;
+        box-shadow: 0 8px 22px rgba(93, 144, 207, 0.35);
+      }
+      .play-toggle:hover { filter: brightness(1.06); }
+      .play-toggle:disabled { opacity: .45; cursor: not-allowed; }
+      .time-readout {
+        font: 13px/1 ui-monospace, Consolas, monospace;
+        color: rgba(233, 243, 251, 0.92); font-variant-numeric: tabular-nums;
+      }
+      .timeline { flex: 1 1 280px; }
+      .note-speed { gap: 8px; }
+      .note-speed output {
+        min-width: 4ch; text-align: center; color: rgba(233, 243, 251, 0.92);
+        font-variant-numeric: tabular-nums;
+      }
+      .background-brightness input[type='range'],
+      .stage-cover input[type='range'] { width: 152px; min-width: 120px; margin: 0; }
+      .alpha-control input[type='range'],
+      .audio-volume input[type='range'] { width: 136px; min-width: 112px; margin: 0; }
+      .compact-select select { min-width: 118px; }
+      .compact-select.is-disabled { opacity: 0.5; }
+      .compact-select.is-disabled select { cursor: not-allowed; }
+      .background-brightness output,
+      .alpha-control output,
+      .audio-volume output,
+      .stage-cover output {
+        min-width: 4ch; text-align: right; color: rgba(233, 243, 251, 0.92);
+        font-variant-numeric: tabular-nums;
+      }
+      .toggle-control input { margin: 0; }
+
+      .controls select {
+        appearance: none; border: 0; border-radius: 999px; padding: 9px 14px;
+        background: linear-gradient(180deg, #8ec3f6 0%, #5d90cf 100%);
+        color: #06101a; font-weight: 700; cursor: pointer;
+      }
+      .controls button.secondary {
+        appearance: none; border: 1px solid rgba(149, 180, 214, 0.22);
+        border-radius: 999px; padding: 8px 14px;
+        background: rgba(149, 180, 214, 0.14); color: rgba(233, 243, 251, 0.92);
+        cursor: pointer; font-weight: 600;
+      }
+      .controls button.secondary:hover { border-color: var(--accent); }
+      .controls button.secondary:disabled { opacity: .45; cursor: not-allowed; }
+      .controls button.note-speed-step { padding: 4px 9px; min-width: 48px; }
+
+      /* ── 诊断面板（折叠） ── */
+      .diag {
+        display: grid; gap: 14px; margin-top: 4px; padding-top: 14px;
+        border-top: 1px solid var(--line);
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .diag[hidden] { display: none; }
+      .diag section { min-width: 0; }
+      .diag h3 {
+        margin: 0 0 8px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+        color: var(--muted); font-weight: 600;
+      }
+      .file-drop {
+        display: block; border: 1px dashed var(--line); border-radius: 10px;
+        padding: 12px; text-align: center; color: var(--muted); cursor: pointer;
+      }
+      .file-drop:hover { border-color: var(--accent); color: var(--accent); }
+      .file-drop small { display: block; margin-top: 4px; opacity: .7; }
+      .diag select { width: 100%; border-radius: 10px; padding: 7px 10px; }
+      .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; margin: 0; }
+      .kv dt { color: var(--muted); }
+      .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+      pre { margin: 0; white-space: pre-wrap; font: 12px/1.6 ui-monospace, Consolas, monospace; color: #b9c6d8; }
+      .checks { list-style: none; margin: 0; padding: 0; }
+      .checks li { padding: 4px 0; border-bottom: 1px dashed rgba(30,41,59,.7); font-size: 12px; color: var(--muted); }
+      .checks li:last-child { border-bottom: 0; }
+      .checks b { display: inline-block; min-width: 44px; }
+      .checks li.ok b { color: var(--ok); }
+      .checks li.bad b { color: var(--bad); }
+
+      .toast {
+        position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+        background: rgba(15,23,42,.95); border: 1px solid var(--line);
+        padding: 8px 16px; border-radius: 999px; font-size: 12px; color: var(--text);
+        opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20;
+      }
+      .toast.show { opacity: 1; }
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 999px; }
+    </style>
+    <link rel="stylesheet" href="./dist/app.css" />
+  </head>
+  <body>
+    <!-- 站点页面（主页 / 加载自制谱 / 谱面转图片 / 关于）由 src/main.ts 渲染到这里 -->
+    <div id="page-site" hidden></div>
+
+    <!-- 预览页：顶栏 + 画布 + 控制栏（布局对齐旧版 previewApp） -->
+    <div id="page-preview" hidden>
+      <div class="pv-page">
+        <header class="pv-topbar">
+          <div class="pv-brand"><strong>Sonolus Version</strong><span>Next SEKAI 预览器</span></div>
+          <span class="pv-dot" id="live-dot"></span>
+          <div class="pv-spacer"></div>
+          <span class="pv-chip">物量 <b id="chip-notes">—</b></span>
+          <span class="pv-chip">时长 <b id="chip-duration">—</b></span>
+          <span class="pv-chip">时序组 <b id="chip-groups">—</b></span>
+          <a class="pv-link" href="/">← 站点</a>
+        </header>
+
+        <div class="pv-scroll">
+          <div class="app-shell">
+            <section class="preview-panel" id="stage-area" data-renderer="wasm">
+              <canvas class="preview-canvas" id="stage"></canvas>
+              <canvas class="preview-canvas" id="stage-wasm"></canvas>
+              <div class="stage-hud" id="hud"></div>
+              <div class="drop-hint">松开以载入 USC / LevelData</div>
+              <div class="unlock-layer" id="unlock-layer" hidden>
+                <div class="unlock-card">
+                  <div class="unlock-title">浏览器需要一次点击来启动音频</div>
+                  <div class="unlock-text">点击下面的按钮后会继续当前播放请求，BGM 与 key 音会按同一时间轴同步。</div>
+                  <button class="unlock-button" id="unlock-button" type="button">启动音频</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="controls">
+              <div class="controls-row controls-row-main">
+                <button id="play" class="play-toggle" type="button" title="播放 / 暂停（空格）" aria-label="播放">▶</button>
+                <div class="time-readout"><span id="time-now">00:00.000</span> / <span id="time-total">00:00.000</span></div>
+              </div>
+
+              <div class="controls-row controls-row-progress">
+                <input id="timeline" class="timeline" type="range" min="0" max="0" step="0.001" value="0" />
+              </div>
+
+              <div class="controls-row controls-row-speed">
+                <label>
+                  速度
+                  <select id="rate">
+                    <option value="0.25">0.25x</option>
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2x</option>
+                  </select>
+                </label>
+                <label class="note-speed" aria-label="noteSpeed">
+                  noteSpeed
+                  <button id="note-speed-minus-one" type="button" class="secondary note-speed-step" aria-label="降低 noteSpeed 1">-1</button>
+                  <button id="note-speed-minus-point-one" type="button" class="secondary note-speed-step" aria-label="降低 noteSpeed 0.1">-0.1</button>
+                  <output id="note-speed-out">10.5</output>
+                  <button id="note-speed-plus-point-one" type="button" class="secondary note-speed-step" aria-label="提高 noteSpeed 0.1">+0.1</button>
+                  <button id="note-speed-plus-one" type="button" class="secondary note-speed-step" aria-label="提高 noteSpeed 1">+1</button>
+                </label>
+                <label class="background-brightness" aria-label="backgroundBrightness">
+                  背景亮度
+                  <input id="bg-brightness" type="range" min="60" max="100" step="1" value="100" />
+                  <output id="bg-out">100%</output>
+                </label>
+                <label class="alpha-control" aria-label="guideAlpha">
+                  Guide 浓度
+                  <input id="guide-alpha" type="range" min="0" max="100" step="1" value="50" />
+                  <output id="guide-out">50%</output>
+                </label>
+                <label class="alpha-control" aria-label="holdAlpha">
+                  长条透明度
+                  <input id="hold-alpha" type="range" min="0" max="100" step="1" value="74" />
+                  <output id="hold-out">74%</output>
+                </label>
+                <label class="audio-volume" aria-label="bgmVolume">
+                  BGM 音量
+                  <input id="bgm-volume" type="range" min="0" max="100" step="1" value="100" />
+                  <output id="bgm-out">100%</output>
+                </label>
+                <label class="audio-volume" aria-label="soundVolume">
+                  音效音量
+                  <input id="se-volume" type="range" min="0" max="100" step="1" value="100" />
+                  <output id="se-out">100%</output>
+                </label>
+                <label class="compact-select" aria-label="noteSkin">
+                  Note Skin
+                  <select id="note-skin">
+                    <option value="0">Notes 01</option>
+                    <option value="1">Notes 02</option>
+                    <option value="2" selected>Next SEKAI 01</option>
+                    <option value="3">Next SEKAI 02</option>
+                  </select>
+                </label>
+                <label class="compact-select" aria-label="noteColor" title="默认按音符类型上色，并跟随 LevelData 的逐音符颜色；其余选项强制单一颜色。">
+                  音符颜色
+                  <select id="note-color">
+                    <option value="0" selected>默认（按类型）</option>
+                    <option value="1">Neutral · 灰阶</option>
+                    <option value="2">Red · 粉</option>
+                    <option value="3">Green · 薄荷</option>
+                    <option value="4">Blue · 蓝紫</option>
+                    <option value="5">Yellow · 金</option>
+                    <option value="6">Purple · 紫</option>
+                    <option value="7">Cyan · 天蓝</option>
+                    <option value="8">Black · 黑</option>
+                  </select>
+                </label>
+                <label class="stage-cover" aria-label="stageCover">
+                  上隐
+                  <input id="stage-cover" type="range" min="0" max="100" step="1" value="0" />
+                  <output id="cover-out">0%</output>
+                </label>
+              </div>
+
+              <div class="controls-row controls-row-toggle">
+                <label class="toggle-control" title="减少判定/粒子特效数量">
+                  <input id="low-effects" type="checkbox" />
+                  低特效
+                </label>
+                <label class="toggle-control">
+                  <input id="mirror" type="checkbox" />
+                  Mirror
+                </label>
+                <label class="toggle-control">
+                  <input id="sim" type="checkbox" checked />
+                  双押线
+                </label>
+                <label class="toggle-control" title="画布按 0.5 倍分辨率渲染，降低 GPU 占用">
+                  <input id="low-resolution" type="checkbox" />
+                  低分辨率
+                </label>
+                <label class="toggle-control" title="damage 音符默认无声；勾选后按 trace 音效播放">
+                  <input id="damage-sound" type="checkbox" />
+                  damage 音效
+                </label>
+              </div>
+
+              <div class="controls-row controls-row-recording">
+                <label class="compact-select" aria-label="recordingResolution">
+                  录屏
+                  <select id="rec-resolution">
+                    <option value="720" selected>720p</option>
+                    <option value="1080">1080p</option>
+                  </select>
+                </label>
+                <label class="compact-select" aria-label="recordingFps">
+                  帧率
+                  <select id="rec-fps">
+                    <option value="60" selected>60 fps</option>
+                    <option value="30">30 fps</option>
+                  </select>
+                </label>
+                <button id="rec-start" type="button" class="secondary">开始录制</button>
+                <button id="rec-pause" type="button" class="secondary" disabled>暂停</button>
+                <button id="rec-stop" type="button" class="secondary" disabled>停止</button>
+                <output id="rec-elapsed" class="recording-elapsed">00:00</output>
+                <span class="recording-status" id="rec-status" role="status" aria-live="polite"></span>
+              </div>
+
+              <div class="controls-row controls-row-fullscreen">
+                <button id="diag-toggle" type="button" class="secondary">诊断 / 自检</button>
+                <button id="fullscreen" type="button" class="secondary">全屏</button>
+              </div>
+
+              <div class="diag" id="diag" hidden>
+                <section>
+                  <h3>性能</h3>
+                  <pre id="perf-readout">性能      等待采样…</pre>
+                </section>
+                <section>
+                  <h3>载入</h3>
+                  <label class="file-drop" id="drop-zone">
+                    点击选择或拖入谱面
+                    <small>LevelData(.json) / .leveldata / USC(.usc)</small>
+                    <input id="file" type="file" accept=".json,.lvdata,.leveldata,.usc,application/json" hidden />
+                  </label>
+                  <select id="sample" style="margin-top:8px">
+                    <option value="./data/sample.leveldata.json">内置样例（服务器谱面）</option>
+                    <option value="./data/synthetic.leveldata.json">合成谱（skip / 缓动 / 阶跃）</option>
+                    <option value="./data/sample.usc">USC 样例（8 时序组 / 滑条 + 引导）</option>
+                  </select>
+                </section>
+                <section>
+                  <h3>渲染器</h3>
+                  <select id="renderer">
+                    <option value="wasm" selected>官方 wasm（旧版渲染器）</option>
+                    <option value="reference">参考实现（Canvas2D）</option>
+                  </select>
+                  <div class="kv" style="margin-top:8px"><dt>状态</dt><dd id="renderer-state">未就绪</dd></div>
+                </section>
+                <section>
+                  <h3>谱面信息</h3>
+                  <dl class="kv" id="chart-info"></dl>
+                </section>
+                <section>
+                  <h3>时钟</h3>
+                  <pre id="debug"></pre>
+                </section>
+                <section>
+                  <h3>一致性自检</h3>
+                  <ul class="checks" id="checks"></ul>
+                </section>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <div class="toast" id="toast"></div>
+    </div>
+    <script type="module" src="./dist/app.js"></script>
+  </body>
+</html>

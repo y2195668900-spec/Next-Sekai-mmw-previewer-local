@@ -1,0 +1,128 @@
+{
+  "bgmOffset": 0,
+  "entities": [
+    { "archetype": "Initialization", "data": [{ "name": "initialLife", "value": 1000 }] },
+    { "archetype": "#BPM_CHANGE", "data": [{ "name": "#BEAT", "value": 0 }, { "name": "#BPM", "value": 120 }] },
+    {
+      "archetype": "#TIMESCALE_GROUP",
+      "name": "0",
+      "data": [
+        { "name": "editorName", "ref": "default" },
+        { "name": "first", "ref": "1" }
+      ]
+    },
+    {
+      "archetype": "#TIMESCALE_CHANGE",
+      "name": "1",
+      "data": [
+        { "name": "#TIMESCALE_GROUP", "ref": "0" },
+        { "name": "#BEAT", "value": 0 },
+        { "name": "#TIMESCALE", "value": 1 },
+        { "name": "#TIMESCALE_SKIP", "value": 0 },
+        { "name": "#TIMESCALE_EASE", "value": 0 },
+        { "name": "transitionStyle", "value": 0 },
+        { "name": "hideNotes", "value": 0 },
+        { "name": "next", "ref": "2" }
+      ]
+    },
+    {
+      "archetype": "#TIMESCALE_CHANGE",
+      "name": "2",
+      "data": [
+        { "name": "#TIMESCALE_GROUP", "ref": "0" },
+        { "name": "#BEAT", "value": 4 },
+        { "name": "#TIMESCALE", "value": 1 },
+        { "name": "#TIMESCALE_SKIP", "value": 2 },
+        { "name": "#TIMESCALE_EASE", "value": 4 },
+        { "name": "transitionStyle", "value": 0 },
+        { "name": "hideNotes", "value": 0 },
+        { "name": "next", "ref": "3" }
+      ]
+    },
+    {
+      "archetype": "#TIMESCALE_CHANGE",
+      "name": "3",
+      "data": [
+        { "name": "#TIMESCALE_GROUP", "ref": "0" },
+        { "name": "#BEAT", "value": 8 },
+        { "name": "#TIMESCALE", "value": 0.5 },
+        { "name": "#TIMESCALE_SKIP", "value": -1 },
+        { "name": "#TIMESCALE_EASE", "value": 22 },
+        { "name": "transitionStyle", "value": 0 },
+        { "name": "hideNotes", "value": 0 },
+        { "name": "next", "ref": "4" }
+      ]
+    },
+    {
+      "archetype": "#TIMESCALE_CHANGE",
+      "name": "4",
+      "data": [
+        { "name": "#TIMESCALE_GROUP", "ref": "0" },
+        { "name": "#BEAT", "value": 12 },
+        { "name": "#TIMESCALE", "value": 3 },
+        { "name": "#TIMESCALE_SKIP", "value": 0 },
+        { "name": "#TIMESCALE_EASE", "value": 39 },
+        { "name": "transitionStyle", "value": 0 },
+        { "name": "hideNotes", "value": 0 },
+        { "name": "next", "ref": "5" }
+      ]
+    },
+    {
+      "archetype": "#TIMESCALE_CHANGE",
+      "name": "5",
+      "data": [
+        { "name": "#TIMESCALE_GROUP", "ref": "0" },
+        { "name": "#BEAT", "value": 16 },
+        { "name": "#TIMESCALE", "value": 1 },
+        { "name": "#TIMESCALE_SKIP", "value": 0 },
+        { "name": "#TIMESCALE_EASE", "value": 0 },
+        { "name": "transitionStyle", "value": 0 },
+        { "name": "hideNotes", "value": 0 }
+      ]
+    },
+    {
+      "archetype": "NormalTapNote",
+      "name": "a",
+      "data": [
+        { "name": "#TIMESCALE_GROUP", "ref": "0" },
+        { "name": "#BEAT", "value": 2 },
+        { "name": "lane", "value": -3 },
+        { "name": "size", "value": 2 },
+        { "name": "direction", "value": 0 }
+      ]
+    },
+    {
+      "archetype": "CriticalFlickNote",
+      "name": "b",
+      "data": [
+        { "name": "#TIMESCALE_GROUP", "ref": "0" },
+        { "name": "#BEAT", "value": 6 },
+        { "name": "lane", "value": 0 },
+        { "name": "size", "value": 2 },
+        { "name": "direction", "value": 1 }
+      ]
+    },
+    {
+      "archetype": "NormalTapNote",
+      "name": "c",
+      "data": [
+        { "name": "#TIMESCALE_GROUP", "ref": "0" },
+        { "name": "#BEAT", "value": 10 },
+        { "name": "lane", "value": 3 },
+        { "name": "size", "value": 2 },
+        { "name": "direction", "value": 0 }
+      ]
+    },
+    {
+      "archetype": "NormalTapNote",
+      "name": "d",
+      "data": [
+        { "name": "#TIMESCALE_GROUP", "ref": "0" },
+        { "name": "#BEAT", "value": 14 },
+        { "name": "lane", "value": -1 },
+        { "name": "size", "value": 1 },
+        { "name": "direction", "value": 0 }
+      ]
+    }
+  ]
+}

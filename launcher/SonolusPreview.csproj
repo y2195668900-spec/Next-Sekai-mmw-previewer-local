@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    一键启动器：内置静态服务器 + 自动开浏览器。
+    发布：launcher\build-launcher.cmd（或见 README.md）
+    产物：SonolusPreview.exe（单文件，框架依赖；也可改成 self-contained）
+
+    `<OutputType>` 必须是 `WinExe`：`Exe` 走控制台子系统，双击时 Windows 会先给
+    进程分配一个控制台窗口，黑框一直挂到进程退出。改 WinExe 后进程没有控制台，
+    双击只留下托盘图标和浏览器页面。排错时见 launcher\README.md 的 console 模式。
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SonolusPreview</AssemblyName>
+    <RootNamespace>SonolusPreview</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+</Project>
