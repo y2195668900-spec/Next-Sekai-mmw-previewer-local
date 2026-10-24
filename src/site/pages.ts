@@ -43,7 +43,8 @@ export function renderHome(root: HTMLElement): void {
     root,
     `
     <section class="hero">
-      <img src="/assets/landing/chart.webp" alt="chart preview" />
+      <!-- 配图缺失时（例如绿色版被打包漏了 assets/landing）不要留破图标，直接隐藏 -->
+      <img src="/assets/landing/chart.webp" alt="chart preview" onerror="this.style.display='none'" />
       <div class="hero-body">
         <h1 class="hero-title">Next SEKAI 音游谱面预览工具</h1>
         <p class="hero-text">支持 USC 与 Sonolus LevelData 解析、完整 HUD、开场信息与特效。变速使用上游 marker 时间轴（缓动 + 位移跳变），画面由 Next SEKAI 的 wasm 渲染器绘制，全部处理都在浏览器内完成。</p>

@@ -16932,7 +16932,8 @@ function renderHome(root) {
     root,
     `
     <section class="hero">
-      <img src="/assets/landing/chart.webp" alt="chart preview" />
+      <!-- \u914D\u56FE\u7F3A\u5931\u65F6\uFF08\u4F8B\u5982\u7EFF\u8272\u7248\u88AB\u6253\u5305\u6F0F\u4E86 assets/landing\uFF09\u4E0D\u8981\u7559\u7834\u56FE\u6807\uFF0C\u76F4\u63A5\u9690\u85CF -->
+      <img src="/assets/landing/chart.webp" alt="chart preview" onerror="this.style.display='none'" />
       <div class="hero-body">
         <h1 class="hero-title">Next SEKAI \u97F3\u6E38\u8C31\u9762\u9884\u89C8\u5DE5\u5177</h1>
         <p class="hero-text">\u652F\u6301 USC \u4E0E Sonolus LevelData \u89E3\u6790\u3001\u5B8C\u6574 HUD\u3001\u5F00\u573A\u4FE1\u606F\u4E0E\u7279\u6548\u3002\u53D8\u901F\u4F7F\u7528\u4E0A\u6E38 marker \u65F6\u95F4\u8F74\uFF08\u7F13\u52A8 + \u4F4D\u79FB\u8DF3\u53D8\uFF09\uFF0C\u753B\u9762\u7531 Next SEKAI \u7684 wasm \u6E32\u67D3\u5668\u7ED8\u5236\uFF0C\u5168\u90E8\u5904\u7406\u90FD\u5728\u6D4F\u89C8\u5668\u5185\u5B8C\u6210\u3002</p>

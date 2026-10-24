@@ -24,7 +24,7 @@
 | `Sonolus 预览器.exe` | 本地静态服务器 + 托盘 + 自动开浏览器；**自带 .NET 运行时**，目标机器不用装任何东西 |
 | `index.html`、`dist/` | 页面与前端打包产物 |
 | `vendor/` | wasm 渲染器 + 资源清单 |
-| `assets/` | 皮肤图集、音效，以及 `assets/mmw/` 下 390 个渲染资源（贴图 / 字体 / 音效） |
+| `assets/` | 皮肤图集、音效、首页配图（`assets/landing/`）、谱面转图片素材（`assets/static/`），以及 `assets/mmw/` 下 390 个渲染资源（贴图 / 字体 / 音效） |
 | `data/` | 内置样例谱面（诊断面板里的「内置样例」） |
 | `README.md`、`先看这里.txt` | 你正在看的说明 |
 
@@ -179,7 +179,7 @@ node scripts/package-portable.mjs   # 生成 release/Sonolus预览器-<日期>/ 
 index.html            站点入口
 dist/                 打包产物（app.js / app.css / core.mjs）
 vendor/               wasm 渲染器（mmw-preview.wasm + glue）、资产清单
-assets/               皮肤图集、音效；绿色版另含 assets/mmw/（390 个渲染资源）
+assets/               皮肤图集、音效、首页配图、转图片素材；绿色版另含 assets/mmw/（390 个渲染资源）
 data/                 内置样例谱面
 serve.mjs             本地静态服务器
 Sonolus 预览器.exe     启动器

@@ -68,11 +68,13 @@ copy /y "launcher\dist\SonolusPreview.exe" "Sonolus 预览器.exe"
 ```bat
 dotnet publish "launcher\SonolusPreview.csproj" -c Release -r win-x64 ^
   --self-contained true -p:PublishSingleFile=true ^
+  -p:EnableCompressionInSingleFile=true ^
   -p:IncludeNativeLibrariesForSelfExtract=true -o "launcher\dist-portable" -nologo
 ```
 
 注意：WinForms 不支持 `PublishTrimmed`（`NETSDK1175`），所以体积压不下去；
-`EnableCompressionInSingleFile` 对这种带原生库的单文件也基本无效（实测仍是 65.8 MB）。
+但 **`EnableCompressionInSingleFile` 必须加**——不加会到 145 MB，加上是 65.9 MB
+（2026-10-24 实测：145,107,749 B → 65,867,053 B）。
 
 ### 想改 exe 名字 / 图标
 

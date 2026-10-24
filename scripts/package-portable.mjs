@@ -85,6 +85,23 @@ if (missing.length > 0) {
   console.error(`[pack] public/assets/mmw 缺 ${missing.length} 个清单文件，例如：${missing.slice(0, 3).join(', ')}`)
   process.exit(1)
 }
+
+// 首页配图（/assets/landing/chart.webp）与「谱面转图片」的素材（/static/notes_new、/static/logo.png）
+// 在旧仓库里分别位于 public/assets/landing 与 public/static。绿色版没有 public/ 兄弟目录，
+// 启动器的 FindSiblingAssets() 会回退到包内 assets/<name>，所以这里统一放到 assets/ 下。
+for (const [fromRel, toRel] of [
+  [['..', 'public', 'assets', 'landing'], ['assets', 'landing']],
+  [['..', 'public', 'static'], ['assets', 'static']],
+]) {
+  const from = resolve(root, ...fromRel)
+  if (!existsSync(from)) {
+    console.warn(`[pack] 缺少 ${fromRel.join('/')}，绿色版里对应的图会显示不出来`)
+    continue
+  }
+  const to = join(target, ...toRel)
+  cpSync(from, to, { recursive: true })
+  console.log(`[pack] 带上 ${toRel.join('/')}`)
+}
 console.log(`[pack] 按清单带上 ${wanted.length} 个渲染资源（${manifest.base}）`)
 
 // 目录里放一份「先看这里」，避免接收方找不到入口

@@ -354,7 +354,7 @@ internal static class Program
         return null;
     }
 
-    /// <summary>首页配图目录（旧版 public/assets/landing）。缺了只是首页图不显示。</summary>
+    /// <summary>首页配图 / 转图片素材目录（旧版 public/assets/landing、public/static）。缺了只是那张图不显示。</summary>
     private static string FindSiblingAssets(string name)
     {
         var candidates = new[]
@@ -362,6 +362,8 @@ internal static class Program
             Path.Combine(root, "public-assets", name),
             Path.Combine(root, "..", "public", "assets", name),
             Path.Combine(root, "..", "public", name),
+            // 绿色版：assets/landing、assets/static 直接躺在包内，没有旧仓库的 public/ 兄弟目录。
+            Path.Combine(root, "assets", name),
         };
         foreach (var candidate in candidates)
         {
