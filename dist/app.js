@@ -16956,7 +16956,7 @@ function renderUpload(root, onStart) {
       <form class="upload-form" id="upload-form">
         <div class="upload-grid">
           <div class="upload-row file">
-            <label for="upload-sus">\u8C31\u9762\u6587\u4EF6\uFF08USC / LevelData / \u81EA\u5236 JSON\uFF0C\u5FC5\u586B\uFF09</label>
+            <label for="upload-sus">\u8C31\u9762\u6587\u4EF6\uFF08USC / LevelData\uFF0C\u5FC5\u586B\uFF09</label>
             <input id="upload-sus" type="file" accept=".usc,.json,.gz,.lvdata,.leveldata,text/plain,application/json,application/gzip" required />
           </div>
           <div class="upload-row file">
@@ -17043,7 +17043,7 @@ function renderUpload(root, onStart) {
     event.preventDefault();
     const file = susInput.files?.[0];
     if (!file) {
-      errorNode.textContent = "\u8BF7\u9009\u62E9 USC\u3001LevelData \u6216\u81EA\u5236 JSON \u8C31\u9762\u6587\u4EF6\u3002";
+      errorNode.textContent = "\u8BF7\u9009\u62E9 USC \u6216 Sonolus LevelData \u8C31\u9762\u6587\u4EF6\u3002";
       return;
     }
     errorNode.textContent = "";
@@ -17085,7 +17085,8 @@ function renderAbout(root) {
         <li><strong>USC</strong>\uFF08<code>.usc</code>\uFF09\uFF1AMikuMikuWorld \u7B49\u5236\u8C31\u5668\u5BFC\u51FA\u7684\u81EA\u5236\u8C31\u3002</li>
         <li><strong>Sonolus LevelData</strong>\uFF08<code>.json</code> / <code>.lvdata</code> /
           <code>.leveldata</code> / <code>.gz</code> / \u65E0\u6269\u5C55\u540D\uFF09\uFF1A\u538B\u7F29\u5305\u4F1A\u81EA\u52A8\u89E3\u538B\u3002</li>
-        <li><strong>\u81EA\u5236 JSON</strong> \u4E0E <strong>SUS</strong>\uFF08<code>.sus</code>\uFF09\uFF1A\u4F1A\u81EA\u52A8\u8F6C\u6362\u6210\u540C\u4E00\u79CD\u5185\u90E8\u7ED3\u6784\u3002</li>
+        <li><strong>\u4E0D\u652F\u6301</strong> <code>.sus</code> \u4E0E\u300C\u81EA\u5236\u8C31 JSON\u300D\uFF1A\u8FD9\u4E24\u7C7B\u6587\u4EF6\u80FD\u8BC6\u522B\u51FA\u6765\uFF0C
+          \u4F46\u5BFC\u5165\u65F6\u4F1A\u63D0\u793A\u6682\u4E0D\u652F\u6301\uFF0C\u8BF7\u5148\u8F6C\u6210 USC \u6216 LevelData\u3002</li>
       </ul>
 
       <h2>\u5F15\u7528\u4E0E\u81F4\u8C22</h2>

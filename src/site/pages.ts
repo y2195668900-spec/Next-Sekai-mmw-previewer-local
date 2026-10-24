@@ -68,7 +68,7 @@ export function renderUpload(root: HTMLElement, onStart: (payload: UploadPayload
       <form class="upload-form" id="upload-form">
         <div class="upload-grid">
           <div class="upload-row file">
-            <label for="upload-sus">谱面文件（USC / LevelData / 自制 JSON，必填）</label>
+            <label for="upload-sus">谱面文件（USC / LevelData，必填）</label>
             <input id="upload-sus" type="file" accept=".usc,.json,.gz,.lvdata,.leveldata,text/plain,application/json,application/gzip" required />
           </div>
           <div class="upload-row file">
@@ -158,7 +158,7 @@ export function renderUpload(root: HTMLElement, onStart: (payload: UploadPayload
     event.preventDefault()
     const file = susInput.files?.[0]
     if (!file) {
-      errorNode.textContent = '请选择 USC、LevelData 或自制 JSON 谱面文件。'
+      errorNode.textContent = '请选择 USC 或 Sonolus LevelData 谱面文件。'
       return
     }
     errorNode.textContent = ''
@@ -203,7 +203,8 @@ export function renderAbout(root: HTMLElement): void {
         <li><strong>USC</strong>（<code>.usc</code>）：MikuMikuWorld 等制谱器导出的自制谱。</li>
         <li><strong>Sonolus LevelData</strong>（<code>.json</code> / <code>.lvdata</code> /
           <code>.leveldata</code> / <code>.gz</code> / 无扩展名）：压缩包会自动解压。</li>
-        <li><strong>自制 JSON</strong> 与 <strong>SUS</strong>（<code>.sus</code>）：会自动转换成同一种内部结构。</li>
+        <li><strong>不支持</strong> <code>.sus</code> 与「自制谱 JSON」：这两类文件能识别出来，
+          但导入时会提示暂不支持，请先转成 USC 或 LevelData。</li>
       </ul>
 
       <h2>引用与致谢</h2>
