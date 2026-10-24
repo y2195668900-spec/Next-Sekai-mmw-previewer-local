@@ -16,7 +16,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { execFileSync } from 'node:child_process'
+import { createZip } from './zip.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const EXE = 'Sonolus 预览器.exe'
@@ -64,7 +64,9 @@ for (const dir of DIRS) cpSync(join(root, dir), join(target, dir), { recursive: 
 // 由 vendor/manifest.json 的 "base": "/assets/mmw/" 定位。绿色版必须把它们一起带上，
 // 否则解压后打开预览会「资源未载入」。这里按清单逐个复制，只带清单里列出的文件。
 const manifest = JSON.parse(readFileSync(join(root, 'vendor', 'manifest.json'), 'utf8'))
-const legacyAssets = resolve(root, '..', 'public', 'assets', 'mmw')
+// 独立仓库 / 绿色版里资源就在本目录 assets/mmw；开发时退回旧仓库的 ../public/assets/mmw。
+const localMmw = join(root, 'assets', 'mmw')
+const legacyAssets = existsSync(localMmw) ? localMmw : resolve(root, '..', 'public', 'assets', 'mmw')
 const wanted = [
   ...manifest.assets,
   ...(manifest.fonts ?? []),
@@ -87,15 +89,15 @@ if (missing.length > 0) {
 }
 
 // 首页配图（/assets/landing/chart.webp）与「谱面转图片」的素材（/static/notes_new、/static/logo.png）
-// 在旧仓库里分别位于 public/assets/landing 与 public/static。绿色版没有 public/ 兄弟目录，
-// 启动器的 FindSiblingAssets() 会回退到包内 assets/<name>，所以这里统一放到 assets/ 下。
-for (const [fromRel, toRel] of [
-  [['..', 'public', 'assets', 'landing'], ['assets', 'landing']],
-  [['..', 'public', 'static'], ['assets', 'static']],
+// 在旧仓库里分别位于 public/assets/landing 与 public/static；独立仓库里则直接放在本目录 assets/ 下。
+// 绿色版没有 public/ 兄弟目录，启动器的 FindSiblingAssets() 会回退到包内 assets/<name>，所以统一放到 assets/ 下。
+for (const [sources, toRel] of [
+  [[['assets', 'landing'], ['..', 'public', 'assets', 'landing']], ['assets', 'landing']],
+  [[['assets', 'static'], ['..', 'public', 'static']], ['assets', 'static']],
 ]) {
-  const from = resolve(root, ...fromRel)
-  if (!existsSync(from)) {
-    console.warn(`[pack] 缺少 ${fromRel.join('/')}，绿色版里对应的图会显示不出来`)
+  const from = sources.map((parts) => resolve(root, ...parts)).find((candidate) => existsSync(candidate))
+  if (!from) {
+    console.warn(`[pack] 缺少 ${sources[0].join('/')}，绿色版里对应的图会显示不出来`)
     continue
   }
   const to = join(target, ...toRel)
@@ -143,10 +145,8 @@ console.log(`[pack] ${files} 个文件, ${(bytes / 1024 / 1024).toFixed(1)} MB`)
 if (!process.argv.includes('--no-zip')) {
   const zip = `${target}.zip`
   rmSync(zip, { force: true })
-  execFileSync(
-    'powershell',
-    ['-NoProfile', '-Command', `Compress-Archive -Path '${target}\\*' -DestinationPath '${zip}' -CompressionLevel Optimal`],
-    { stdio: 'inherit' },
-  )
-  console.log(`[pack] zip: ${zip} (${(statSync(zip).size / 1024 / 1024).toFixed(1)} MB)`)
+  // 用自带的 zip.mjs 而不是 PowerShell 的 Compress-Archive：后者写的条目用 `\` 分隔，
+  // 跨平台解压工具（unzip / 7-Zip 命令行）会报错。
+  const result = createZip(target, zip)
+  console.log(`[pack] zip: ${zip} (${(statSync(zip).size / 1024 / 1024).toFixed(1)} MB, ${result.files} 项)`)
 }

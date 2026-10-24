@@ -16,9 +16,21 @@ import { fileURLToPath } from 'node:url'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const port = Number(process.argv[2] ?? 5181)
-const legacyAssets = path.join(here, '..', 'public', 'assets', 'mmw')
-const landingAssets = path.join(here, '..', 'public', 'assets', 'landing')
-const staticAssets = path.join(here, '..', 'public', 'static')
+
+/**
+ * 资源目录先看本目录 `assets/`（独立仓库 / 绿色版都放这里），
+ * 找不到再退回旧版仓库的 `../public`（开发时零拷贝）。
+ * 这与 `launcher/Program.cs` 里 FindLegacyAssets / FindSiblingAssets 的候选顺序保持一致。
+ */
+function pickDir(localParts, legacyParts) {
+  const local = path.join(here, ...localParts)
+  if (fs.existsSync(local)) return local
+  return path.join(here, '..', 'public', ...legacyParts)
+}
+
+const legacyAssets = pickDir(['assets', 'mmw'], ['assets', 'mmw'])
+const landingAssets = pickDir(['assets', 'landing'], ['assets', 'landing'])
+const staticAssets = pickDir(['assets', 'static'], ['static'])
 
 const types = {
   '.html': 'text/html; charset=utf-8',
