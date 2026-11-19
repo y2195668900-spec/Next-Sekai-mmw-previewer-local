@@ -1,4 +1,4 @@
-# Sonolus 预览器 · 使用说明
+# Sonolus 预览器 v1.1.0 · 使用说明
 
 一个本地运行的 Project Sekai 自制谱预览器：把 `.usc` 或 Sonolus LevelData 谱面选进来，
 就能看到接近实机的音符、长条、判定线、HUD 与打击音；可以调速度、换皮肤、录屏导出 MP4。
@@ -9,7 +9,7 @@
 
 ## 1. 绿色版：解压即用（推荐）
 
-拿到 `Sonolus预览器-<日期>.zip`（在源码目录的 `release/` 下，或用 `node scripts/package-portable.mjs` 现做一份）：
+拿到 `Sonolus-Previewer-v1.1.0-portable.zip`（在 GitHub Releases 下载，或用 `node scripts/package-portable.mjs` 在 `release/` 下现做一份）：
 
 1. 解压到任意目录（路径带中文、空格都没问题）。
 2. 双击 **`Sonolus 预览器.exe`** —— 右下角出现托盘图标，浏览器自动打开预览器。
@@ -65,6 +65,9 @@
 
 **不支持** `.sus`（旧版 SUS 谱面）与「自制谱 JSON」（CustomScoreJson）——
 这两类文件能被识别出来，但导入时会提示「暂不支持」，请先转成 USC 或 LevelData 再导入。
+
+LevelData 里给单个音符单独设置的**打击音效**（制谱器的 per-note effect）会一并生效：
+默认、静音、Tap、Flick、Trace、Tick 及它们各自的 Critical 变体都按谱面设置播放。
 
 > 想换谱面就再点一次左侧「加载自制谱」，不用刷新页面。
 
@@ -166,7 +169,7 @@ exe 没有数字签名，首次运行点「更多信息 → 仍要运行」。�
 node build.mjs                     # 重新打包 dist/（改了 TS 之后）
 node scripts/sync-renderer.mjs     # 拷贝 wasm 渲染器 + 生成 vendor/manifest.json（换了 wasm 之后）
 node test/parity.mjs               # 一致性自检
-node scripts/package-portable.mjs   # 生成 release/Sonolus预览器-<日期>/ 与同名 zip
+node scripts/package-portable.mjs   # 生成 release/Sonolus预览器-v1.1.0/ 与 portable zip
 ```
 
 - 启动器源码在 `launcher/`：`launcher/build-launcher.cmd` 出框架依赖版；
@@ -184,10 +187,7 @@ data/                 内置样例谱面
 serve.mjs             本地静态服务器
 Sonolus 预览器.exe     启动器
 scripts/              资源同步、打包脚本
-docs/                 版本快照、开发记录
 ```
-
-开发过程、每次改动的原因与踩坑记录在 [docs/dev-notes.md](docs/dev-notes.md)。
 
 ---
 

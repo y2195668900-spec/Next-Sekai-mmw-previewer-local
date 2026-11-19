@@ -335,6 +335,12 @@ export class WasmStage {
     )
   }
 
+  /** 嵌入模式（制谱器内嵌预览）：跳过开场卡片与结束 AP 演出。 */
+  setEmbedMode(skipIntro: boolean, skipAp: boolean): void {
+    if (!this.module) return
+    this.module.ccall('setPlayerEmbedMode', null, ['number', 'number'], [skipIntro ? 1 : 0, skipAp ? 1 : 0])
+  }
+
   setVolumes(bgm: number, sound: number): void {
     if (!this.module) return
     this.module.ccall('setPlayerAudioVolumes', null, ['number', 'number'], [bgm, sound])

@@ -14,7 +14,7 @@
  * 代价是 `Chart` 是从 `CustomScoreJson` 反推出来的，`holdTick`/`guide` 只能靠 baseType 判断。
  */
 
-import { parseUsc } from '../../../src/lib/uscParser'
+import { parseUsc } from '../lib/uscParser'
 import type { BpmPoint } from '../time/bpm'
 import { TempoMap } from '../time/bpm'
 import { TimescaleTrack, type Marker } from '../time/timescale'

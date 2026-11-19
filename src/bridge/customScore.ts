@@ -9,8 +9,8 @@
  * 这里改用新版内核的 marker 时间轴（缓动 + 积分 + skip）反推 `SpeedLayers`。
  */
 
-import { parseLevelData as parseLegacyLevelData } from '../../../src/lib/levelDataParser'
-import { relativeSpeedRatio } from '../../../src/lib/customScore'
+import { parseLevelData as parseLegacyLevelData } from '../lib/levelDataParser'
+import { relativeSpeedRatio } from '../lib/customScore'
 import type { Chart } from '../data/types'
 import { createTickClock, readTempoEvents, type TempoEvent, type TickClock } from './clock'
 import { buildSpeedLayers, valueAtKeys, type SpeedBridgeOptions, type SpeedKey } from './speed'

@@ -6067,6 +6067,9 @@ async function Module(moduleArg = {}) {
         if (!name) {
           return;
         }
+        if (globalThis.__MMW_SE_DEBUG) {
+          (globalThis.__MMW_SE_LOG = globalThis.__MMW_SE_LOG || []).push({ name, gain, at: performance.now() });
+        }
         const context = this.audioContext;
         const buffer = this.soundBuffers.get(name);
         if (!context || !buffer) {
@@ -6359,6 +6362,7 @@ async function Module(moduleArg = {}) {
   var _seekPlayer = Module2["_seekPlayer"] = makeInvalidEarlyAccess("_seekPlayer");
   var _setPlayerPlaybackRate = Module2["_setPlayerPlaybackRate"] = makeInvalidEarlyAccess("_setPlayerPlaybackRate");
   var _setPlayerAudioVolumes = Module2["_setPlayerAudioVolumes"] = makeInvalidEarlyAccess("_setPlayerAudioVolumes");
+  var _setPlayerEmbedMode = Module2["_setPlayerEmbedMode"] = makeInvalidEarlyAccess("_setPlayerEmbedMode");
   var _setPlayerPreviewConfig = Module2["_setPlayerPreviewConfig"] = makeInvalidEarlyAccess("_setPlayerPreviewConfig");
   var _renderPlayerFrame = Module2["_renderPlayerFrame"] = makeInvalidEarlyAccess("_renderPlayerFrame");
   var _getPlayerFrameTimingJson = Module2["_getPlayerFrameTimingJson"] = makeInvalidEarlyAccess("_getPlayerFrameTimingJson");
@@ -6486,6 +6490,7 @@ async function Module(moduleArg = {}) {
     assert(typeof wasmExports2["seekPlayer"] != "undefined", "missing Wasm export: seekPlayer");
     assert(typeof wasmExports2["setPlayerPlaybackRate"] != "undefined", "missing Wasm export: setPlayerPlaybackRate");
     assert(typeof wasmExports2["setPlayerAudioVolumes"] != "undefined", "missing Wasm export: setPlayerAudioVolumes");
+    assert(typeof wasmExports2["setPlayerEmbedMode"] != "undefined", "missing Wasm export: setPlayerEmbedMode");
     assert(typeof wasmExports2["setPlayerPreviewConfig"] != "undefined", "missing Wasm export: setPlayerPreviewConfig");
     assert(typeof wasmExports2["renderPlayerFrame"] != "undefined", "missing Wasm export: renderPlayerFrame");
     assert(typeof wasmExports2["getPlayerFrameTimingJson"] != "undefined", "missing Wasm export: getPlayerFrameTimingJson");
@@ -6610,6 +6615,7 @@ async function Module(moduleArg = {}) {
     _seekPlayer = Module2["_seekPlayer"] = createExportWrapper("seekPlayer", wasmExports2["seekPlayer"], 1);
     _setPlayerPlaybackRate = Module2["_setPlayerPlaybackRate"] = createExportWrapper("setPlayerPlaybackRate", wasmExports2["setPlayerPlaybackRate"], 1);
     _setPlayerAudioVolumes = Module2["_setPlayerAudioVolumes"] = createExportWrapper("setPlayerAudioVolumes", wasmExports2["setPlayerAudioVolumes"], 2);
+    _setPlayerEmbedMode = Module2["_setPlayerEmbedMode"] = createExportWrapper("setPlayerEmbedMode", wasmExports2["setPlayerEmbedMode"], 2);
     _setPlayerPreviewConfig = Module2["_setPlayerPreviewConfig"] = createExportWrapper("setPlayerPreviewConfig", wasmExports2["setPlayerPreviewConfig"], 16);
     _renderPlayerFrame = Module2["_renderPlayerFrame"] = createExportWrapper("renderPlayerFrame", wasmExports2["renderPlayerFrame"], 0);
     _getPlayerFrameTimingJson = Module2["_getPlayerFrameTimingJson"] = createExportWrapper("getPlayerFrameTimingJson", wasmExports2["getPlayerFrameTimingJson"], 0);
@@ -7449,6 +7455,11 @@ var init_wasmStage = __esm({
           ]
         );
       }
+      /** 嵌入模式（制谱器内嵌预览）：跳过开场卡片与结束 AP 演出。 */
+      setEmbedMode(skipIntro, skipAp) {
+        if (!this.module) return;
+        this.module.ccall("setPlayerEmbedMode", null, ["number", "number"], [skipIntro ? 1 : 0, skipAp ? 1 : 0]);
+      }
       setVolumes(bgm, sound) {
         if (!this.module) return;
         this.module.ccall("setPlayerAudioVolumes", null, ["number", "number"], [bgm, sound]);
@@ -7607,7 +7618,7 @@ var init_wasmStage = __esm({
   }
 });
 
-// ../src/lib/customScore.ts
+// src/lib/customScore.ts
 function noteSortKey(note) {
   return [
     note.ticks,
@@ -7618,6 +7629,7 @@ function noteSortKey(note) {
     note.type ? 1 : 0,
     note.direction,
     note.flickDirection ?? 0,
+    note.hitEffect ?? 0,
     note.noteLineType,
     note.speedLayer,
     Math.round(note.speedRatio * 4096),
@@ -7886,7 +7898,7 @@ function relativeSpeedRatio(referenceSpeed, layerSpeed) {
 }
 var TICKS_PER_BEAT, STAGE_EDGE, MIN_LANE_SIZE, MAX_LANE_SIZE, COORDINATE_PRECISION, EventType, BaseType, Category, LineType, CustomScoreBuilder, MIN_SPEED_SEGMENT_TICKS;
 var init_customScore = __esm({
-  "../src/lib/customScore.ts"() {
+  "src/lib/customScore.ts"() {
     "use strict";
     TICKS_PER_BEAT = 480;
     STAGE_EDGE = 6;
@@ -8054,6 +8066,7 @@ var init_customScore = __esm({
           nextConnectionId,
           direction: step.direction ?? 0,
           ...step.flickDirection ? { flickDirection: step.flickDirection } : {},
+          ...step.hitEffect ? { hitEffect: step.hitEffect } : {},
           noteLineType: step.lineType ?? LineType.Linear,
           speedLayer: step.speedLayer ?? -1,
           speedRatio: Number.isFinite(step.speedRatio) && step.speedRatio > 0 ? step.speedRatio : 1,
@@ -8073,7 +8086,7 @@ var init_customScore = __esm({
   }
 });
 
-// ../src/lib/levelDataParser.ts
+// src/lib/levelDataParser.ts
 function readNumber2(value, fallback = 0) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -8285,6 +8298,10 @@ function parseLevelData2(text) {
   const sizeOf = (index) => readNumber2(valueOf(index, "size"), 0.5);
   const kindOf3 = (index) => Math.trunc(readNumber2(valueOf(index, "segmentKind"), 0));
   const styleOf = (index) => Math.trunc(readNumber2(valueOf(index, "style"), 0));
+  const effectOf = (index) => {
+    const effect = Math.trunc(readNumber2(valueOf(index, "effectKind"), 0));
+    return effect < 0 ? 0 : effect > 10 ? 10 : effect;
+  };
   const guideColorOf = (index) => {
     const kind = kindOf3(index);
     return isGuideSegmentKind(kind) ? kind - GUIDE_COLOR_BASE : -1;
@@ -8320,7 +8337,8 @@ function parseLevelData2(text) {
       lineType: lineTypeFromConnectorEase(easeOf(index)),
       speedLayer: speed.layer,
       speedRatio: speed.ratio,
-      style: styleOf(index)
+      style: styleOf(index),
+      hitEffect: effectOf(index)
     };
   };
   const tapBaseType = (archetype) => {
@@ -8417,7 +8435,7 @@ function parseLevelData2(text) {
 }
 var EASE_LINEAR, GUIDE_COLOR_BASE;
 var init_levelDataParser = __esm({
-  "../src/lib/levelDataParser.ts"() {
+  "src/lib/levelDataParser.ts"() {
     "use strict";
     init_customScore();
     EASE_LINEAR = 1;
@@ -8673,7 +8691,7 @@ var init_customScore2 = __esm({
   }
 });
 
-// ../src/lib/uscParser.ts
+// src/lib/uscParser.ts
 function readNumber3(value, fallback = 0) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -9011,7 +9029,7 @@ function buildSlideSteps(connections, slideCritical, speedOf) {
 }
 var CHART_TYPE;
 var init_uscParser = __esm({
-  "../src/lib/uscParser.ts"() {
+  "src/lib/uscParser.ts"() {
     "use strict";
     init_customScore();
     CHART_TYPE = ["single", "slide", "guide", "timescalegroup", "bpm", "damage"];
@@ -12432,6 +12450,7 @@ async function mountWasm(seekTo) {
       cover: sessionCover
     });
     applyStageConfig();
+    if (EMBED_MODE) stage.setEmbedMode(true, true);
     $("#chip-notes").textContent = String(stage.comboEventCount());
     stage.seek(seekTo ?? 0);
     stage.render();
@@ -12440,6 +12459,10 @@ async function mountWasm(seekTo) {
     syncTransport(snap.currentTimeSec);
     updateRecordingUi();
     startWasmLoop();
+    if (EMBED_MODE && AUTOPLAY) {
+      stage.play().catch(() => {
+      });
+    }
   } catch (error) {
     wasmBroken = true;
     rendererState.textContent = "\u4E0D\u53EF\u7528";
@@ -12518,18 +12541,26 @@ function setMode(next) {
   renderDebug(chartTime);
   syncTransport(chartTime);
 }
+function embedLeadIn() {
+  if (!EMBED_MODE || mode !== "wasm" || !stage) return 0;
+  const snap = stage.snapshot();
+  return Math.max(0, snap.effectiveLeadInSec || 0);
+}
 function syncTransport(time) {
   const duration = mode === "wasm" && stage ? stage.snapshot().durationSec : field?.duration ?? 0;
-  if (Number(timeline.max) !== duration) timeline.max = String(duration);
-  if (!timelineDragging) timeline.value = String(time);
+  const leadIn = embedLeadIn();
+  const shownTime = Math.max(0, time - leadIn);
+  const shownDuration = Math.max(0, duration - leadIn);
+  if (Number(timeline.max) !== shownDuration) timeline.max = String(shownDuration);
+  if (!timelineDragging) timeline.value = String(shownTime);
   const nowAt = performance.now();
-  const timeText = formatTime(time);
+  const timeText = formatTime(shownTime);
   if (timeText !== lastSyncedTimeText && nowAt - lastTimeTextAt > 33) {
     lastSyncedTimeText = timeText;
     lastTimeTextAt = nowAt;
     $("#time-now").textContent = timeText;
   }
-  const totalText = formatTime(duration);
+  const totalText = formatTime(shownDuration);
   if (totalText !== lastSyncedTotalText) {
     lastSyncedTotalText = totalText;
     $("#time-total").textContent = totalText;
@@ -12755,11 +12786,11 @@ function resize() {
     if (mode === "wasm") stage.render();
   }
 }
-async function fetchLevelData(url2) {
+async function fetchLevelData(url2, clearExisting = true) {
   try {
     const response = await fetch(url2);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    clearSession();
+    if (clearExisting) clearSession();
     await loadBytes(new Uint8Array(await response.arrayBuffer()), url2.split("/").pop() ?? url2);
   } catch (error) {
     notify(`\u8F7D\u5165\u5931\u8D25\uFF1A${error.message}`);
@@ -12840,6 +12871,14 @@ async function applyPayload(payload) {
   renderSessionMeta();
 }
 async function mountPreview(payload) {
+  if (EMBED_MODE) {
+    document.body.classList.add("embed-mode");
+    window.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const chromeWebview = window.chrome?.webview;
+      chromeWebview?.postMessage?.({ type: "mmw-preview-exit" });
+    });
+  }
   if (!booted) {
     booted = true;
     booting = bootOnce();
@@ -12868,7 +12907,7 @@ async function mountPreview(payload) {
       } catch {
       }
     }
-    await fetchLevelData(currentSource());
+    await fetchLevelData(currentSource(), false);
     renderSessionMeta();
   }
 }
@@ -12881,7 +12920,7 @@ function pausePreview() {
   }
   field?.pause();
 }
-var $, canvas, wasmCanvas, stageArea, rendererSelect, rendererState, timeline, playButton, rateSelect, fileInput, dropZone, sampleSelect, toast, debug, perfReadout, profiler, checksEl, hud, chartInfo, diagToggle, diag, unlockLayer, unlockButton, recResolution, recFps, recStartButton, recPauseButton, recStopButton, recElapsed, recStatus, chart, field, skin, parity, mode, stage, manifest, bridge, lastText, lastLabel, sourceKind, usc, wasmFrame, wasmBusy, pendingRemount, audioUnlocked, sessionMeta, sessionBgm, sessionCover, booted, booting, wasmBroken, hitSound, recorder, recordingStartPending, recordingSavePending, recordingTimer, hitNotes, hitCursor, pulse, lastTick, noteSpeedValue, bgmVolume, seVolume, lowResolution, toastTimer, formatTime, LEAD_IN_MS, dpr, renderScale, timelineDragging, lastSyncedTimeText, lastSyncedTotalText, lastSyncedPlaying, lastTimeTextAt;
+var $, canvas, wasmCanvas, stageArea, rendererSelect, rendererState, timeline, playButton, rateSelect, fileInput, dropZone, sampleSelect, toast, debug, perfReadout, profiler, checksEl, hud, chartInfo, diagToggle, diag, unlockLayer, unlockButton, recResolution, recFps, recStartButton, recPauseButton, recStopButton, recElapsed, recStatus, chart, field, skin, parity, mode, stage, manifest, bridge, lastText, lastLabel, sourceKind, usc, wasmFrame, wasmBusy, pendingRemount, audioUnlocked, sessionMeta, sessionBgm, sessionCover, booted, booting, wasmBroken, hitSound, recorder, recordingStartPending, recordingSavePending, recordingTimer, hitNotes, hitCursor, pulse, lastTick, noteSpeedValue, bgmVolume, seVolume, lowResolution, toastTimer, formatTime, LEAD_IN_MS, dpr, renderScale, timelineDragging, lastSyncedTimeText, lastSyncedTotalText, lastSyncedPlaying, lastTimeTextAt, EMBED_QUERY, EMBED_MODE, AUTOPLAY;
 var init_mount = __esm({
   "src/preview/mount.ts"() {
     "use strict";
@@ -13037,11 +13076,12 @@ var init_mount = __esm({
       const time = Number(timeline.value);
       if (mode === "wasm") {
         if (!stage) return;
-        stage.seek(time);
+        const seekTime = time + embedLeadIn();
+        stage.seek(seekTime);
         stage.render();
-        lastTick = time;
-        renderDebug(time);
-        syncTransport(time);
+        lastTick = seekTime;
+        renderDebug(seekTime);
+        syncTransport(seekTime);
         return;
       }
       field?.seek(time);
@@ -13157,6 +13197,9 @@ var init_mount = __esm({
       void fetchLevelData(sampleSelect.value);
     });
     window.addEventListener("resize", resize);
+    EMBED_QUERY = new URLSearchParams(location.search);
+    EMBED_MODE = EMBED_QUERY.get("embed") === "1";
+    AUTOPLAY = EMBED_QUERY.get("autoplay") === "1";
   }
 });
 

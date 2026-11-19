@@ -50,6 +50,12 @@
         color: var(--muted); font-size: 12px;
       }
       .pv-chip b { color: var(--text); font-weight: 600; }
+      /* 嵌入模式（?embed=1，制谱器内嵌预览）：隐藏站点外壳、录屏与诊断/全屏 */
+      body.embed-mode .pv-topbar,
+      body.embed-mode .controls-row-recording,
+      body.embed-mode .controls-row-fullscreen { display: none !important; }
+      body.embed-mode .pv-page { padding-top: 6px; }
+
       .pv-link {
         color: var(--muted); text-decoration: none; font-size: 12px;
         padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;

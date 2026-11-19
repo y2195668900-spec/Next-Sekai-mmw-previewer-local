@@ -454,6 +454,7 @@ async function mountWasm(seekTo?: number): Promise<void> {
       cover: sessionCover,
     })
     applyStageConfig()
+    if (EMBED_MODE) stage!.setEmbedMode(true, true)
     // 物量 = 谱面结束时的总 combo（wasm 侧判定事件条数，与 HUD 的 COMBO 同源）。
     $('#chip-notes').textContent = String(stage!.comboEventCount())
     // seek 到 0（含 lead-in）→ 首帧就是开场动画的起点，而不是谱面第 0 秒。
@@ -465,6 +466,10 @@ async function mountWasm(seekTo?: number): Promise<void> {
     // 录制按钮依赖 stage 是否就绪，挂载完成后要刷新一次。
     updateRecordingUi()
     startWasmLoop()
+    if (EMBED_MODE && AUTOPLAY) {
+      // 嵌入模式下由制谱器代用户启动播放；WebView2 已放开 autoplay 限制。
+      stage!.play().catch(() => {})
+    }
   } catch (error) {
     wasmBroken = true
     rendererState.textContent = '不可用'
@@ -579,21 +584,33 @@ let lastSyncedTotalText = ''
 let lastSyncedPlaying: boolean | null = null
 let lastTimeTextAt = 0
 
+/** 嵌入模式：把 wasm 的「含 lead-in 时间」换算成制谱器时间轴上的谱面时间。 */
+function embedLeadIn(): number {
+  if (!EMBED_MODE || mode !== 'wasm' || !stage) return 0
+  const snap = stage.snapshot()
+  return Math.max(0, snap.effectiveLeadInSec || 0)
+}
+
 function syncTransport(time: number): void {
   const duration = mode === 'wasm' && stage ? stage.snapshot().durationSec : (field?.duration ?? 0)
+  // 嵌入制谱器时，时间轴要跟制谱器完全对齐：显示谱面时间（去掉 9 秒前导），
+  // 否则用户看到「15 秒」其实是谱面第 6 秒，会以为音符提前出现了。
+  const leadIn = embedLeadIn()
+  const shownTime = Math.max(0, time - leadIn)
+  const shownDuration = Math.max(0, duration - leadIn)
   // 时间轴范围 = 总时长（含 lead-in），与旧版 updateUi 一致。
-  if (Number(timeline.max) !== duration) timeline.max = String(duration)
-  if (!timelineDragging) timeline.value = String(time)
+  if (Number(timeline.max) !== shownDuration) timeline.max = String(shownDuration)
+  if (!timelineDragging) timeline.value = String(shownTime)
   // HUD 文字每秒最多重排 30 次：165 Hz 屏上逐帧写 textContent 会让排版/绘制
   // 占掉大量主线程时间，而人眼分辨不出每秒 30 次以上的百毫秒位变化。
   const nowAt = performance.now()
-  const timeText = formatTime(time)
+  const timeText = formatTime(shownTime)
   if (timeText !== lastSyncedTimeText && nowAt - lastTimeTextAt > 33) {
     lastSyncedTimeText = timeText
     lastTimeTextAt = nowAt
     $('#time-now').textContent = timeText
   }
-  const totalText = formatTime(duration)
+  const totalText = formatTime(shownDuration)
   if (totalText !== lastSyncedTotalText) {
     lastSyncedTotalText = totalText
     $('#time-total').textContent = totalText
@@ -760,11 +777,12 @@ timeline.addEventListener('input', () => {
   const time = Number(timeline.value)
   if (mode === 'wasm') {
     if (!stage) return
-    stage.seek(time)
+    const seekTime = time + embedLeadIn()
+    stage.seek(seekTime)
     stage.render()
-    lastTick = time
-    renderDebug(time)
-    syncTransport(time)
+    lastTick = seekTime
+    renderDebug(seekTime)
+    syncTransport(seekTime)
     return
   }
   field?.seek(time)
@@ -1071,11 +1089,11 @@ function resize(): void {
 
 window.addEventListener('resize', resize)
 
-async function fetchLevelData(url: string): Promise<void> {
+async function fetchLevelData(url: string, clearExisting = true): Promise<void> {
   try {
     const response = await fetch(url)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    clearSession()
+    if (clearExisting) clearSession()
     await loadBytes(new Uint8Array(await response.arrayBuffer()), url.split('/').pop() ?? url)
   } catch (error) {
     notify(`载入失败：${(error as Error).message}`)
@@ -1167,7 +1185,20 @@ async function applyPayload(payload: PreviewPayload): Promise<void> {
  * 进入预览页。第一次调用做初始化，之后只负责「显示 + 载入新谱」。
  * 传 payload 时按表单载入；不传时按 `?src=` 或下拉框载入。
  */
+/** 嵌入模式（?embed=1）：给制谱器内嵌用，隐藏站点外壳、跳过开场与 AP。 */
+const EMBED_QUERY = new URLSearchParams(location.search)
+const EMBED_MODE = EMBED_QUERY.get('embed') === '1'
+const AUTOPLAY = EMBED_QUERY.get('autoplay') === '1'
+
 export async function mountPreview(payload?: PreviewPayload): Promise<void> {
+  if (EMBED_MODE) {
+    document.body.classList.add('embed-mode')
+    window.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return
+      const chromeWebview = (window as unknown as { chrome?: { webview?: { postMessage?: (message: unknown) => void } } }).chrome?.webview
+      chromeWebview?.postMessage?.({ type: 'mmw-preview-exit' })
+    })
+  }
   if (!booted) {
     booted = true
     booting = bootOnce()
@@ -1199,7 +1230,7 @@ export async function mountPreview(payload?: PreviewPayload): Promise<void> {
         /* 同上 */
       }
     }
-    await fetchLevelData(currentSource())
+    await fetchLevelData(currentSource(), false)
     renderSessionMeta()
   }
 }

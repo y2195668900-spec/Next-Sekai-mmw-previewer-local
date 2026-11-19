@@ -873,7 +873,7 @@ function runParity(chart) {
   ];
 }
 
-// ../src/lib/customScore.ts
+// src/lib/customScore.ts
 var TICKS_PER_BEAT = 480;
 var STAGE_EDGE = 6;
 var MIN_LANE_SIZE = 0.05;
@@ -946,6 +946,7 @@ function noteSortKey(note) {
     note.type ? 1 : 0,
     note.direction,
     note.flickDirection ?? 0,
+    note.hitEffect ?? 0,
     note.noteLineType,
     note.speedLayer,
     Math.round(note.speedRatio * 4096),
@@ -1274,6 +1275,7 @@ var CustomScoreBuilder = class {
       nextConnectionId,
       direction: step.direction ?? 0,
       ...step.flickDirection ? { flickDirection: step.flickDirection } : {},
+      ...step.hitEffect ? { hitEffect: step.hitEffect } : {},
       noteLineType: step.lineType ?? LineType.Linear,
       speedLayer: step.speedLayer ?? -1,
       speedRatio: Number.isFinite(step.speedRatio) && step.speedRatio > 0 ? step.speedRatio : 1,
@@ -1333,7 +1335,7 @@ function relativeSpeedRatio(referenceSpeed, layerSpeed) {
   return Math.abs(ratio - 1) < 1e-4 ? 1 : ratio;
 }
 
-// ../src/lib/levelDataParser.ts
+// src/lib/levelDataParser.ts
 var EASE_LINEAR = 1;
 var GUIDE_COLOR_BASE = 101;
 function readNumber2(value, fallback = 0) {
@@ -1547,6 +1549,10 @@ function parseLevelData2(text) {
   const sizeOf = (index) => readNumber2(valueOf(index, "size"), 0.5);
   const kindOf3 = (index) => Math.trunc(readNumber2(valueOf(index, "segmentKind"), 0));
   const styleOf = (index) => Math.trunc(readNumber2(valueOf(index, "style"), 0));
+  const effectOf = (index) => {
+    const effect = Math.trunc(readNumber2(valueOf(index, "effectKind"), 0));
+    return effect < 0 ? 0 : effect > 10 ? 10 : effect;
+  };
   const guideColorOf = (index) => {
     const kind = kindOf3(index);
     return isGuideSegmentKind(kind) ? kind - GUIDE_COLOR_BASE : -1;
@@ -1582,7 +1588,8 @@ function parseLevelData2(text) {
       lineType: lineTypeFromConnectorEase(easeOf(index)),
       speedLayer: speed.layer,
       speedRatio: speed.ratio,
-      style: styleOf(index)
+      style: styleOf(index),
+      hitEffect: effectOf(index)
     };
   };
   const tapBaseType = (archetype) => {
@@ -1919,7 +1926,7 @@ function clockFromSpeedLayer(keys, clock, tick) {
   return total;
 }
 
-// ../src/lib/uscParser.ts
+// src/lib/uscParser.ts
 var CHART_TYPE = ["single", "slide", "guide", "timescalegroup", "bpm", "damage"];
 function readNumber3(value, fallback = 0) {
   if (typeof value === "number" && Number.isFinite(value)) {

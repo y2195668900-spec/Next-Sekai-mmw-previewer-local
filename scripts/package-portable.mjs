@@ -10,7 +10,7 @@
 //   README.md            使用说明
 //
 // 用法：
-//   node scripts/package-portable.mjs            # 生成 release/Sonolus预览器-<日期>/ 并打 zip
+//   node scripts/package-portable.mjs            # 生成 release/Sonolus预览器-v<版本>/ 并打 zip
 //   node scripts/package-portable.mjs --no-zip   # 只生成目录
 
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -19,9 +19,12 @@ import { fileURLToPath } from 'node:url'
 import { createZip } from './zip.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+const version = typeof pkg.version === 'string' && pkg.version.trim() !== '' ? pkg.version.trim() : null
 const EXE = 'Sonolus 预览器.exe'
 const FILES = ['index.html', 'README.md', EXE]
-const DIRS = ['dist', 'vendor', 'assets', 'data']
+const DIRS = ['dist', 'vendor', 'assets']
+const SAMPLE_DATA = ['sample.leveldata.json', 'sample.usc', 'synthetic.leveldata.json']
 
 const stamp = (() => {
   const now = new Date()
@@ -30,7 +33,8 @@ const stamp = (() => {
 })()
 
 const releaseDir = join(root, 'release')
-const target = join(releaseDir, `Sonolus预览器-${stamp}`)
+const targetName = version ? `Sonolus预览器-v${version}` : `Sonolus预览器-${stamp}`
+const target = join(releaseDir, targetName)
 
 if (!existsSync(join(root, 'dist', 'app.js'))) {
   console.error('[pack] 缺少 dist/app.js —— 先执行 node build.mjs')
@@ -59,6 +63,15 @@ for (const file of FILES) {
   else cpSync(join(root, file), join(target, file))
 }
 for (const dir of DIRS) cpSync(join(root, dir), join(target, dir), { recursive: true })
+mkdirSync(join(target, 'data'), { recursive: true })
+for (const sample of SAMPLE_DATA) {
+  const from = join(root, 'data', sample)
+  if (!existsSync(from)) {
+    console.error(`[pack] 缺少内置样例 data/${sample}`)
+    process.exit(1)
+  }
+  cpSync(from, join(target, 'data', sample))
+}
 
 // wasm 渲染器要的 376 张贴图 / 3 个字体 / 11 个音效都在旧仓库的 public/assets/mmw 下，
 // 由 vendor/manifest.json 的 "base": "/assets/mmw/" 定位。绿色版必须把它们一起带上，
@@ -108,7 +121,7 @@ console.log(`[pack] 按清单带上 ${wanted.length} 个渲染资源（${manifes
 
 // 目录里放一份「先看这里」，避免接收方找不到入口
 const guide = [
-  'Sonolus 预览器（绿色版）',
+  version ? `Sonolus 预览器 v${version}（绿色版）` : 'Sonolus 预览器（绿色版）',
   '',
   '1. 解压到任意目录（路径里有中文、空格都没关系）。',
   '2. 双击 “Sonolus 预览器.exe”。',
@@ -143,7 +156,9 @@ console.log(`[pack] 目录: ${target}`)
 console.log(`[pack] ${files} 个文件, ${(bytes / 1024 / 1024).toFixed(1)} MB`)
 
 if (!process.argv.includes('--no-zip')) {
-  const zip = `${target}.zip`
+  const zip = version
+    ? join(releaseDir, `Sonolus-Previewer-v${version}-portable.zip`)
+    : `${target}.zip`
   rmSync(zip, { force: true })
   // 用自带的 zip.mjs 而不是 PowerShell 的 Compress-Archive：后者写的条目用 `\` 分隔，
   // 跨平台解压工具（unzip / 7-Zip 命令行）会报错。

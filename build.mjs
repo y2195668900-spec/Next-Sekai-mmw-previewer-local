@@ -19,6 +19,11 @@ const require = createRequire(import.meta.url)
 const esbuild = require('esbuild')
 const here = path.dirname(fileURLToPath(import.meta.url))
 
+// 与根仓库并存时，把根仓库的共享解析模块同步进来（独立仓库里则使用自带副本）。
+try {
+  execFileSync(process.execPath, [path.join(here, 'scripts', 'sync-shared-lib.mjs')], { stdio: 'ignore' })
+} catch {}
+
 const glue = path.join(here, 'vendor/wasm/mmw-preview.js')
 if (!fs.existsSync(glue)) {
   console.log('vendor/wasm 缺失，先同步旧版渲染器…')
